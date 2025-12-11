@@ -15,7 +15,6 @@ CORS(app)
 
 INCIDENTS = None
 
-# Column mapping for messy files
 COLUMN_MAPPING = {
     'timestamp': ['timestamp', 'Timestamp', 'time', 'Time', 'event_time'],
     'attack_type': ['attack_type', 'Attack Type', 'type', 'Type', 'attack'],
@@ -26,10 +25,6 @@ COLUMN_MAPPING = {
     'blocked': ['blocked', 'Blocked', 'is_blocked', 'status']
 }
 
-
-# ========================================
-# Utilities
-# ========================================
 def normalize_columns(df):
     rename_map = {}
     for standard, variations in COLUMN_MAPPING.items():
@@ -37,7 +32,6 @@ def normalize_columns(df):
             if col in variations:
                 rename_map[col] = standard
     return df.rename(columns=rename_map)
-
 
 def preprocess(df):
     df = normalize_columns(df)
@@ -72,17 +66,10 @@ def preprocess(df):
     return df
 
 
-# ========================================
-# Serve Dashboard UI
-# ========================================
 @app.route("/")
 def home():
     return render_template("index.html")
 
-
-# ========================================
-# Upload Incidents
-# ========================================
 @app.route("/api/incidents/upload", methods=["POST"])
 def upload_incidents():
     global INCIDENTS
@@ -116,10 +103,6 @@ def upload_incidents():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# ========================================
-# Generate Synthetic Data
-# ========================================
 @app.route("/api/incidents/generate", methods=["POST"])
 def generate_incidents():
     global INCIDENTS
@@ -171,10 +154,6 @@ def generate_incidents():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# ========================================
-# Clustering Analysis
-# ========================================
 @app.route("/api/clustering/analyze", methods=["POST"])
 def clustering():
     if INCIDENTS is None:
@@ -221,9 +200,6 @@ def clustering():
         return jsonify({"error": str(e)}), 500
 
 
-# ========================================
-# Temporal Analysis
-# ========================================
 @app.route('/api/analysis/temporal', methods=['POST'])
 def temporal():
     global INCIDENTS
@@ -232,29 +208,23 @@ def temporal():
         return jsonify({"error": "No data loaded"}), 400
 
     df = INCIDENTS.copy()
-
-    # Hourly distribution
     hourly = df.groupby("hour").size().to_dict()
-
-    # Weekly heatmap (convert DF to records)
+    
     heatmap = df.groupby(["day_of_week", "hour"]).size().reset_index(name="count")
     heatmap_records = heatmap.to_dict("records")
 
-    # Attack type patterns
     if "attack_type" in df.columns:
         attack = df.groupby(["attack_type", "hour"]).size().reset_index(name="count")
         attack_records = attack.to_dict("records")
     else:
         attack_records = []
 
-    # Severity patterns
     if "severity" in df.columns:
         severity = df.groupby(["severity", "hour"]).size().reset_index(name="count")
         severity_records = severity.to_dict("records")
     else:
         severity_records = []
 
-    # High risk calculations
     hourly_counts = df.groupby("hour").size()
     high_risk_hours = hourly_counts[hourly_counts > hourly_counts.mean()].index.tolist()
 
@@ -271,9 +241,6 @@ def temporal():
         "total_incidents": len(df)
     })
 
-# ========================================
-# Prediction Analysis
-# ========================================
 @app.route("/api/analysis/predictions", methods=["POST"])
 def predictions():
     if INCIDENTS is None:
@@ -320,16 +287,8 @@ def predictions():
     })
 
 
-# ========================================
-# Auto-open Browser
-# ========================================
 # def open_browser():
 #     webbrowser.open("http://localhost:5000")
-
-
-# ========================================
-# Run Flask App
-# ========================================
 if __name__ == "__main__":
     # threading.Timer(1.5, open_browser).start()
     app.run(host="0.0.0.0", port=5000, debug=True)
